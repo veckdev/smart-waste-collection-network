@@ -12,12 +12,12 @@ import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import ie.nci.smartwaste.smartbin.model.SmartBin;
+import ie.nci.smartwaste.smartbin.repository.SmartBinRepository;
 
 public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImplBase {
 
-    private final Map<String, SmartBinRecord> bins = new ConcurrentHashMap<>();
+    private final SmartBinRepository smartBinRepository = new SmartBinRepository();
 
     @Override
     public void registerBin(
@@ -35,7 +35,7 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             return;
         }
 
-        if (bins.containsKey(binId)) {
+        if (smartBinRepository.existsById(binId)) {
             responseObserver.onNext(
                     RegisterBinResponse.newBuilder()
                             .setSuccess(false)
@@ -46,14 +46,14 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             return;
         }
 
-        SmartBinRecord bin = new SmartBinRecord(
+        SmartBin bin = new SmartBin(
                 binId,
                 request.getLocation(),
                 request.getWasteType(),
                 request.getCapacityLitres()
         );
 
-        bins.put(binId, bin);
+        smartBinRepository.save(bin);
 
         responseObserver.onNext(
                 RegisterBinResponse.newBuilder()
@@ -69,7 +69,7 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             UpdateFillLevelRequest request,
             StreamObserver<UpdateFillLevelResponse> responseObserver
     ) {
-        SmartBinRecord bin = bins.get(request.getBinId());
+        SmartBin bin = smartBinRepository.findById(request.getBinId());
 
         if (bin == null) {
             responseObserver.onError(
@@ -107,7 +107,7 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             GetBinStatusRequest request,
             StreamObserver<GetBinStatusResponse> responseObserver
     ) {
-        SmartBinRecord bin = bins.get(request.getBinId());
+        SmartBin bin = smartBinRepository.findById(request.getBinId());
 
         if (bin == null) {
             responseObserver.onError(
@@ -136,7 +136,7 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             ReportDamageRequest request,
             StreamObserver<ReportDamageResponse> responseObserver
     ) {
-        SmartBinRecord bin = bins.get(request.getBinId());
+        SmartBin bin = smartBinRepository.findById(request.getBinId());
 
         if (bin == null) {
             responseObserver.onError(
