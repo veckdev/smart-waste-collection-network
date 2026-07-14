@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package smartbin;
+
+option java_multiple_files = true;
+option java_package = "ie.nci.smartwaste.smartbin";
+option java_outer_classname = "SmartBinProto";
+
+service SmartBinService {
+
+  rpc RegisterBin(RegisterBinRequest)
+      returns (RegisterBinResponse);
+
+  rpc UpdateFillLevel(UpdateFillLevelRequest)
+      returns (UpdateFillLevelResponse);
+
+  rpc GetBinStatus(GetBinStatusRequest)
+      returns (GetBinStatusResponse);
+
+  rpc ReportDamage(ReportDamageRequest)
+      returns (ReportDamageResponse);
+}
+
+message RegisterBinRequest {
+  string bin_id = 1;
+  string location = 2;
+  string waste_type = 3;
+  int32 capacity_litres = 4;
+}
+
+message RegisterBinResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateFillLevelRequest {
+  string bin_id = 1;
+  int32 fill_level_percentage = 2;
+}
+
+message UpdateFillLevelResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetBinStatusRequest {
+  string bin_id = 1;
+}
+
+message GetBinStatusResponse {
+  string bin_id = 1;
+  string location = 2;
+  string waste_type = 3;
+  int32 capacity_litres = 4;
+  int32 fill_level_percentage = 5;
+  bool damaged = 6;
+}
+
+message ReportDamageRequest {
+  string bin_id = 1;
+  string damage_description = 2;
+}
+
+message ReportDamageResponse {
+  bool success = 1;
+  string message = 2;
+}
