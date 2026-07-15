@@ -1,48 +1,71 @@
 package ie.nci.smartwaste.smartbin.client;
 
+import ie.nci.smartwaste.discovery.DiscoveredService;
+import ie.nci.smartwaste.discovery.ServiceDiscovery;
+import ie.nci.smartwaste.smartbin.GetBinStatusRequest;
+import ie.nci.smartwaste.smartbin.GetBinStatusResponse;
 import ie.nci.smartwaste.smartbin.RegisterBinRequest;
 import ie.nci.smartwaste.smartbin.RegisterBinResponse;
+import ie.nci.smartwaste.smartbin.ReportDamageRequest;
+import ie.nci.smartwaste.smartbin.ReportDamageResponse;
 import ie.nci.smartwaste.smartbin.SmartBinServiceGrpc;
 import ie.nci.smartwaste.smartbin.UpdateFillLevelRequest;
 import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import ie.nci.smartwaste.smartbin.GetBinStatusRequest;
-import ie.nci.smartwaste.smartbin.GetBinStatusResponse;
-import ie.nci.smartwaste.smartbin.ReportDamageRequest;
-import ie.nci.smartwaste.smartbin.ReportDamageResponse;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class SmartBinClient {
 
-    private static final String HOST = "localhost";
-    private static final int PORT = 50051;
+    private static final String SERVICE_TYPE =
+            "_smartbin._tcp.local.";
+
+    private static final String SERVICE_NAME =
+            "Smart Bin Service";
 
     private final ManagedChannel channel;
     private final SmartBinServiceGrpc.SmartBinServiceBlockingStub blockingStub;
 
-    public SmartBinClient() {
+    public SmartBinClient() throws IOException, InterruptedException {
+
+        ServiceDiscovery serviceDiscovery =
+                new ServiceDiscovery();
+
+        DiscoveredService discoveredService =
+                serviceDiscovery.discoverService(
+                        SERVICE_TYPE,
+                        SERVICE_NAME
+                );
+
         channel = ManagedChannelBuilder
-                .forAddress(HOST, PORT)
+                .forAddress(
+                        discoveredService.getHost(),
+                        discoveredService.getPort()
+                )
                 .usePlaintext()
                 .build();
 
-        blockingStub = SmartBinServiceGrpc.newBlockingStub(channel);
+        blockingStub =
+                SmartBinServiceGrpc.newBlockingStub(channel);
     }
 
     public void registerBin() {
-        RegisterBinRequest request = RegisterBinRequest.newBuilder()
-                .setBinId("BIN-001")
-                .setLocation("O'Connell Street, Dublin")
-                .setWasteType("General Waste")
-                .setCapacityLitres(240)
-                .build();
+        RegisterBinRequest request =
+                RegisterBinRequest.newBuilder()
+                        .setBinId("BIN-001")
+                        .setLocation("O'Connell Street, Dublin")
+                        .setWasteType("General Waste")
+                        .setCapacityLitres(240)
+                        .build();
 
         try {
-            RegisterBinResponse response = blockingStub.registerBin(request);
+            RegisterBinResponse response =
+                    blockingStub.registerBin(request);
 
+            System.out.println();
             System.out.println("=== Register Bin ===");
             System.out.println("Success: " + response.getSuccess());
             System.out.println("Message: " + response.getMessage());
@@ -56,10 +79,11 @@ public class SmartBinClient {
     }
 
     public void updateFillLevel() {
-        UpdateFillLevelRequest request = UpdateFillLevelRequest.newBuilder()
-                .setBinId("BIN-001")
-                .setFillLevelPercentage(75)
-                .build();
+        UpdateFillLevelRequest request =
+                UpdateFillLevelRequest.newBuilder()
+                        .setBinId("BIN-001")
+                        .setFillLevelPercentage(75)
+                        .build();
 
         try {
             UpdateFillLevelResponse response =
@@ -78,36 +102,35 @@ public class SmartBinClient {
         }
     }
 
-    public void shutdown() throws InterruptedException {
-        channel.shutdown()
-                .awaitTermination(5, TimeUnit.SECONDS);
-    }
-
-    public static void main(String[] args) {
-        SmartBinClient client = new SmartBinClient();
+    public void reportDamage() {
+        ReportDamageRequest request =
+                ReportDamageRequest.newBuilder()
+                        .setBinId("BIN-001")
+                        .setDamageDescription("Broken lid")
+                        .build();
 
         try {
-            client.registerBin();
-            client.updateFillLevel();
-            client.reportDamage();
-            client.getBinStatus();
+            ReportDamageResponse response =
+                    blockingStub.reportDamage(request);
 
-        } finally {
+            System.out.println();
+            System.out.println("=== Report Damage ===");
+            System.out.println("Success: " + response.getSuccess());
+            System.out.println("Message: " + response.getMessage());
 
-            try {
-                client.shutdown();
-
-            } catch (InterruptedException exception) {
-                Thread.currentThread().interrupt();
-                System.err.println("Client shutdown was interrupted.");
-            }
+        } catch (StatusRuntimeException exception) {
+            System.err.println(
+                    "Report Damage RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
         }
     }
 
     public void getBinStatus() {
-        GetBinStatusRequest request = GetBinStatusRequest.newBuilder()
-                .setBinId("BIN-001")
-                .build();
+        GetBinStatusRequest request =
+                GetBinStatusRequest.newBuilder()
+                        .setBinId("BIN-001")
+                        .build();
 
         try {
             GetBinStatusResponse response =
@@ -119,7 +142,9 @@ public class SmartBinClient {
             System.out.println("Location: " + response.getLocation());
             System.out.println("Waste type: " + response.getWasteType());
             System.out.println(
-                    "Capacity: " + response.getCapacityLitres() + " litres"
+                    "Capacity: "
+                            + response.getCapacityLitres()
+                            + " litres"
             );
             System.out.println(
                     "Fill level: "
@@ -136,30 +161,45 @@ public class SmartBinClient {
         }
     }
 
-    public void reportDamage() {
+    public void shutdown() throws InterruptedException {
+        channel.shutdown()
+                .awaitTermination(5, TimeUnit.SECONDS);
+    }
 
-        ReportDamageRequest request =
-                ReportDamageRequest.newBuilder()
-                        .setBinId("BIN-001")
-                        .setDamageDescription("Broken lid")
-                        .build();
+    public static void main(String[] args) {
+
+        SmartBinClient client = null;
 
         try {
+            client = new SmartBinClient();
 
-            ReportDamageResponse response =
-                    blockingStub.reportDamage(request);
+            client.registerBin();
+            client.updateFillLevel();
+            client.reportDamage();
+            client.getBinStatus();
 
-            System.out.println();
-            System.out.println("=== Report Damage ===");
-            System.out.println("Success: " + response.getSuccess());
-            System.out.println("Message: " + response.getMessage());
-
-        } catch (StatusRuntimeException exception) {
-
+        } catch (IOException | InterruptedException exception) {
             System.err.println(
-                    "Report Damage RPC failed: "
-                            + exception.getStatus().getDescription()
+                    "Could not discover Smart Bin Service: "
+                            + exception.getMessage()
             );
+
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+
+        } finally {
+            if (client != null) {
+                try {
+                    client.shutdown();
+
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    System.err.println(
+                            "Client shutdown was interrupted."
+                    );
+                }
+            }
         }
     }
 }
