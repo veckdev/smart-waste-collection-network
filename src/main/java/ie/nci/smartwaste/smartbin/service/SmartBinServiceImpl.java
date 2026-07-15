@@ -149,10 +149,23 @@ public class SmartBinServiceImpl
             ReportDamageRequest request,
             StreamObserver<ReportDamageResponse> responseObserver
     ) {
-        SmartBin smartBin =
-                repository.findBinById(request.getBinId());
+        String damageDescription = request.getDamageDescription().trim();
 
-        if (smartBin == null) {
+        if (damageDescription.isEmpty()) {
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT
+                            .withDescription("Damage description cannot be empty.")
+                            .asRuntimeException()
+            );
+            return;
+        }
+
+        boolean updated = repository.reportDamage(
+                request.getBinId(),
+                damageDescription
+        );
+
+        if (!updated) {
             responseObserver.onError(
                     Status.NOT_FOUND
                             .withDescription("Smart bin not found.")
@@ -161,17 +174,10 @@ public class SmartBinServiceImpl
             return;
         }
 
-        smartBin.setDamaged(true);
-        smartBin.setDamageDescription(
-                request.getDamageDescription()
-        );
-
         ReportDamageResponse response =
                 ReportDamageResponse.newBuilder()
                         .setSuccess(true)
-                        .setMessage(
-                                "Damage report recorded successfully."
-                        )
+                        .setMessage("Damage report recorded successfully.")
                         .build();
 
         responseObserver.onNext(response);

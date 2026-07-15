@@ -8,6 +8,10 @@ import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import ie.nci.smartwaste.smartbin.GetBinStatusRequest;
+import ie.nci.smartwaste.smartbin.GetBinStatusResponse;
+import ie.nci.smartwaste.smartbin.ReportDamageRequest;
+import ie.nci.smartwaste.smartbin.ReportDamageResponse;
 
 import java.util.concurrent.TimeUnit;
 
@@ -85,8 +89,11 @@ public class SmartBinClient {
         try {
             client.registerBin();
             client.updateFillLevel();
+            client.reportDamage();
+            client.getBinStatus();
 
         } finally {
+
             try {
                 client.shutdown();
 
@@ -94,6 +101,65 @@ public class SmartBinClient {
                 Thread.currentThread().interrupt();
                 System.err.println("Client shutdown was interrupted.");
             }
+        }
+    }
+
+    public void getBinStatus() {
+        GetBinStatusRequest request = GetBinStatusRequest.newBuilder()
+                .setBinId("BIN-001")
+                .build();
+
+        try {
+            GetBinStatusResponse response =
+                    blockingStub.getBinStatus(request);
+
+            System.out.println();
+            System.out.println("=== Smart Bin Status ===");
+            System.out.println("Bin ID: " + response.getBinId());
+            System.out.println("Location: " + response.getLocation());
+            System.out.println("Waste type: " + response.getWasteType());
+            System.out.println(
+                    "Capacity: " + response.getCapacityLitres() + " litres"
+            );
+            System.out.println(
+                    "Fill level: "
+                            + response.getFillLevelPercentage()
+                            + "%"
+            );
+            System.out.println("Damaged: " + response.getDamaged());
+
+        } catch (StatusRuntimeException exception) {
+            System.err.println(
+                    "Get Bin Status RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
+        }
+    }
+
+    public void reportDamage() {
+
+        ReportDamageRequest request =
+                ReportDamageRequest.newBuilder()
+                        .setBinId("BIN-001")
+                        .setDamageDescription("Broken lid")
+                        .build();
+
+        try {
+
+            ReportDamageResponse response =
+                    blockingStub.reportDamage(request);
+
+            System.out.println();
+            System.out.println("=== Report Damage ===");
+            System.out.println("Success: " + response.getSuccess());
+            System.out.println("Message: " + response.getMessage());
+
+        } catch (StatusRuntimeException exception) {
+
+            System.err.println(
+                    "Report Damage RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
         }
     }
 }

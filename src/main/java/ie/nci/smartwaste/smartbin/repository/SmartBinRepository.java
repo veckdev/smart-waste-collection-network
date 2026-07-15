@@ -31,4 +31,16 @@ public class SmartBinRepository {
         bin.setFillLevelPercentage(fillLevelPercentage);
         return true;
     }
+
+    public boolean reportDamage(String binId, String damageDescription) {
+        SmartBin bin = bins.get(binId);
+
+        if (bin == null) {
+            return false;
+        }
+
+        bin.setDamaged(true);
+        bin.setDamageDescription(damageDescription);
+        return true;
+    }
 }
