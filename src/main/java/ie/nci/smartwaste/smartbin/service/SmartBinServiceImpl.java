@@ -9,15 +9,16 @@ import ie.nci.smartwaste.smartbin.ReportDamageResponse;
 import ie.nci.smartwaste.smartbin.SmartBinServiceGrpc;
 import ie.nci.smartwaste.smartbin.UpdateFillLevelRequest;
 import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
+import ie.nci.smartwaste.smartbin.model.SmartBin;
+import ie.nci.smartwaste.smartbin.repository.SmartBinRepository;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
-import ie.nci.smartwaste.smartbin.model.SmartBin;
-import ie.nci.smartwaste.smartbin.repository.SmartBinRepository;
+public class SmartBinServiceImpl
+        extends SmartBinServiceGrpc.SmartBinServiceImplBase {
 
-public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImplBase {
-
-    private final SmartBinRepository smartBinRepository = new SmartBinRepository();
+    private final SmartBinRepository repository =
+            new SmartBinRepository();
 
     @Override
     public void registerBin(
@@ -35,32 +36,34 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             return;
         }
 
-        if (smartBinRepository.existsById(binId)) {
-            responseObserver.onNext(
+        if (repository.existsById(binId)) {
+            RegisterBinResponse response =
                     RegisterBinResponse.newBuilder()
                             .setSuccess(false)
                             .setMessage("A bin with this ID already exists.")
-                            .build()
-            );
+                            .build();
+
+            responseObserver.onNext(response);
             responseObserver.onCompleted();
             return;
         }
 
-        SmartBin bin = new SmartBin(
+        SmartBin smartBin = new SmartBin(
                 binId,
                 request.getLocation(),
                 request.getWasteType(),
                 request.getCapacityLitres()
         );
 
-        smartBinRepository.save(bin);
+        repository.save(smartBin);
 
-        responseObserver.onNext(
+        RegisterBinResponse response =
                 RegisterBinResponse.newBuilder()
                         .setSuccess(true)
                         .setMessage("Smart bin registered successfully.")
-                        .build()
-        );
+                        .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
@@ -69,9 +72,25 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             UpdateFillLevelRequest request,
             StreamObserver<UpdateFillLevelResponse> responseObserver
     ) {
-        SmartBin bin = smartBinRepository.findById(request.getBinId());
+        int fillLevel = request.getFillLevelPercentage();
 
-        if (bin == null) {
+        if (fillLevel < 0 || fillLevel > 100) {
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT
+                            .withDescription(
+                                    "Fill level must be between 0 and 100."
+                            )
+                            .asRuntimeException()
+            );
+            return;
+        }
+
+        boolean updated = repository.updateFillLevel(
+                request.getBinId(),
+                fillLevel
+        );
+
+        if (!updated) {
             responseObserver.onError(
                     Status.NOT_FOUND
                             .withDescription("Smart bin not found.")
@@ -80,25 +99,13 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             return;
         }
 
-        int fillLevel = request.getFillLevelPercentage();
-
-        if (fillLevel < 0 || fillLevel > 100) {
-            responseObserver.onError(
-                    Status.INVALID_ARGUMENT
-                            .withDescription("Fill level must be between 0 and 100.")
-                            .asRuntimeException()
-            );
-            return;
-        }
-
-        bin.setFillLevelPercentage(fillLevel);
-
-        responseObserver.onNext(
+        UpdateFillLevelResponse response =
                 UpdateFillLevelResponse.newBuilder()
                         .setSuccess(true)
                         .setMessage("Fill level updated successfully.")
-                        .build()
-        );
+                        .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
@@ -107,9 +114,10 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             GetBinStatusRequest request,
             StreamObserver<GetBinStatusResponse> responseObserver
     ) {
-        SmartBin bin = smartBinRepository.findById(request.getBinId());
+        SmartBin smartBin =
+                repository.findBinById(request.getBinId());
 
-        if (bin == null) {
+        if (smartBin == null) {
             responseObserver.onError(
                     Status.NOT_FOUND
                             .withDescription("Smart bin not found.")
@@ -118,16 +126,21 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             return;
         }
 
-        responseObserver.onNext(
+        GetBinStatusResponse response =
                 GetBinStatusResponse.newBuilder()
-                        .setBinId(bin.getBinId())
-                        .setLocation(bin.getLocation())
-                        .setWasteType(bin.getWasteType())
-                        .setCapacityLitres(bin.getCapacityLitres())
-                        .setFillLevelPercentage(bin.getFillLevelPercentage())
-                        .setDamaged(bin.isDamaged())
-                        .build()
-        );
+                        .setBinId(smartBin.getBinId())
+                        .setLocation(smartBin.getLocation())
+                        .setWasteType(smartBin.getWasteType())
+                        .setCapacityLitres(
+                                smartBin.getCapacityLitres()
+                        )
+                        .setFillLevelPercentage(
+                                smartBin.getFillLevelPercentage()
+                        )
+                        .setDamaged(smartBin.isDamaged())
+                        .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
@@ -136,9 +149,10 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             ReportDamageRequest request,
             StreamObserver<ReportDamageResponse> responseObserver
     ) {
-        SmartBin bin = smartBinRepository.findById(request.getBinId());
+        SmartBin smartBin =
+                repository.findBinById(request.getBinId());
 
-        if (bin == null) {
+        if (smartBin == null) {
             responseObserver.onError(
                     Status.NOT_FOUND
                             .withDescription("Smart bin not found.")
@@ -147,78 +161,20 @@ public class SmartBinServiceImpl extends SmartBinServiceGrpc.SmartBinServiceImpl
             return;
         }
 
-        bin.setDamaged(true);
-        bin.setDamageDescription(request.getDamageDescription());
+        smartBin.setDamaged(true);
+        smartBin.setDamageDescription(
+                request.getDamageDescription()
+        );
 
-        responseObserver.onNext(
+        ReportDamageResponse response =
                 ReportDamageResponse.newBuilder()
                         .setSuccess(true)
-                        .setMessage("Damage report recorded successfully.")
-                        .build()
-        );
+                        .setMessage(
+                                "Damage report recorded successfully."
+                        )
+                        .build();
+
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
-    }
-
-    private static class SmartBinRecord {
-
-        private final String binId;
-        private final String location;
-        private final String wasteType;
-        private final int capacityLitres;
-
-        private int fillLevelPercentage;
-        private boolean damaged;
-        private String damageDescription;
-
-        private SmartBinRecord(
-                String binId,
-                String location,
-                String wasteType,
-                int capacityLitres
-        ) {
-            this.binId = binId;
-            this.location = location;
-            this.wasteType = wasteType;
-            this.capacityLitres = capacityLitres;
-            this.fillLevelPercentage = 0;
-            this.damaged = false;
-            this.damageDescription = "";
-        }
-
-        public String getBinId() {
-            return binId;
-        }
-
-        public String getLocation() {
-            return location;
-        }
-
-        public String getWasteType() {
-            return wasteType;
-        }
-
-        public int getCapacityLitres() {
-            return capacityLitres;
-        }
-
-        public int getFillLevelPercentage() {
-            return fillLevelPercentage;
-        }
-
-        public void setFillLevelPercentage(int fillLevelPercentage) {
-            this.fillLevelPercentage = fillLevelPercentage;
-        }
-
-        public boolean isDamaged() {
-            return damaged;
-        }
-
-        public void setDamaged(boolean damaged) {
-            this.damaged = damaged;
-        }
-
-        public void setDamageDescription(String damageDescription) {
-            this.damageDescription = damageDescription;
-        }
     }
 }

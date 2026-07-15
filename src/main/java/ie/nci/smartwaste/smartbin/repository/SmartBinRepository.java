@@ -17,7 +17,18 @@ public class SmartBinRepository {
         bins.put(smartBin.getBinId(), smartBin);
     }
 
-    public SmartBin findById(String binId) {
+    public SmartBin findBinById(String binId) {
         return bins.get(binId);
+    }
+
+    public boolean updateFillLevel(String binId, int fillLevelPercentage) {
+        SmartBin bin = bins.get(binId);
+
+        if (bin == null) {
+            return false;
+        }
+
+        bin.setFillLevelPercentage(fillLevelPercentage);
+        return true;
     }
 }
