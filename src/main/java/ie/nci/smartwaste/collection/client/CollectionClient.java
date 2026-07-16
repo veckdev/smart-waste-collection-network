@@ -3,16 +3,16 @@ package ie.nci.smartwaste.collection.client;
 import ie.nci.smartwaste.collection.AssignCollectionRequest;
 import ie.nci.smartwaste.collection.AssignCollectionResponse;
 import ie.nci.smartwaste.collection.CollectionServiceGrpc;
+import ie.nci.smartwaste.collection.CollectionStop;
+import ie.nci.smartwaste.collection.CompleteCollectionRequest;
+import ie.nci.smartwaste.collection.CompleteCollectionResponse;
+import ie.nci.smartwaste.collection.GetCollectionRouteRequest;
+import ie.nci.smartwaste.collection.GetCollectionRouteResponse;
 import ie.nci.smartwaste.discovery.DiscoveredService;
 import ie.nci.smartwaste.discovery.ServiceDiscovery;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import ie.nci.smartwaste.collection.CompleteCollectionRequest;
-import ie.nci.smartwaste.collection.CompleteCollectionResponse;
-import ie.nci.smartwaste.collection.CollectionStop;
-import ie.nci.smartwaste.collection.GetCollectionRouteRequest;
-import ie.nci.smartwaste.collection.GetCollectionRouteResponse;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -54,7 +54,7 @@ public class CollectionClient {
                 CollectionServiceGrpc.newBlockingStub(channel);
     }
 
-    public void assignCollection() {
+    public boolean assignCollection() {
 
         AssignCollectionRequest request =
                 AssignCollectionRequest.newBuilder()
@@ -65,7 +65,6 @@ public class CollectionClient {
                         .build();
 
         try {
-
             AssignCollectionResponse response =
                     blockingStub.assignCollection(request);
 
@@ -78,12 +77,15 @@ public class CollectionClient {
                     "Message: " + response.getMessage()
             );
 
-        } catch (StatusRuntimeException exception) {
+            return response.getSuccess();
 
+        } catch (StatusRuntimeException exception) {
             System.err.println(
                     "Assign Collection RPC failed: "
                             + exception.getStatus().getDescription()
             );
+
+            return false;
         }
     }
 
@@ -96,7 +98,6 @@ public class CollectionClient {
                         .build();
 
         try {
-
             CompleteCollectionResponse response =
                     blockingStub.completeCollection(request);
 
@@ -110,7 +111,6 @@ public class CollectionClient {
             );
 
         } catch (StatusRuntimeException exception) {
-
             System.err.println(
                     "Complete Collection RPC failed: "
                             + exception.getStatus().getDescription()
@@ -126,7 +126,6 @@ public class CollectionClient {
                         .build();
 
         try {
-
             GetCollectionRouteResponse response =
                     blockingStub.getCollectionRoute(request);
 
@@ -156,7 +155,6 @@ public class CollectionClient {
             }
 
         } catch (StatusRuntimeException exception) {
-
             System.err.println(
                     "Get Collection Route RPC failed: "
                             + exception.getStatus().getDescription()
@@ -165,7 +163,6 @@ public class CollectionClient {
     }
 
     public void shutdown() throws InterruptedException {
-
         channel.shutdown()
                 .awaitTermination(5, TimeUnit.SECONDS);
     }
@@ -174,17 +171,24 @@ public class CollectionClient {
 
         CollectionClient client = null;
 
-
         try {
-
             client = new CollectionClient();
 
-            client.assignCollection();
-            client.completeCollection();
-            client.getCollectionRoute();
+            boolean collectionAssigned =
+                    client.assignCollection();
+
+            if (collectionAssigned) {
+                client.completeCollection();
+                client.getCollectionRoute();
+
+            } else {
+                System.out.println();
+                System.out.println(
+                        "Collection process stopped because the assignment failed."
+                );
+            }
 
         } catch (IOException | InterruptedException exception) {
-
             System.err.println(
                     "Could not discover Collection Service: "
                             + exception.getMessage()
@@ -195,15 +199,11 @@ public class CollectionClient {
             }
 
         } finally {
-
             if (client != null) {
-
                 try {
-
                     client.shutdown();
 
                 } catch (InterruptedException exception) {
-
                     Thread.currentThread().interrupt();
 
                     System.err.println(

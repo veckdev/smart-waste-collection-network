@@ -12,6 +12,8 @@ import ie.nci.smartwaste.collection.model.CollectionTask;
 import ie.nci.smartwaste.collection.repository.CollectionRepository;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import ie.nci.smartwaste.collection.integration.SmartBinServiceClient;
+
 
 import java.util.List;
 
@@ -45,6 +47,39 @@ public class CollectionServiceImpl
                             .setSuccess(false)
                             .setMessage(
                                     "A collection with this ID already exists."
+                            )
+                            .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+            return;
+        }
+
+        try {
+            SmartBinServiceClient smartBinClient =
+                    new SmartBinServiceClient();
+
+            boolean binExists =
+                    smartBinClient.binExists(request.getBinId());
+
+            if (!binExists) {
+                AssignCollectionResponse response =
+                        AssignCollectionResponse.newBuilder()
+                                .setSuccess(false)
+                                .setMessage("Smart bin not found.")
+                                .build();
+
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+                return;
+            }
+
+        } catch (Exception exception) {
+            AssignCollectionResponse response =
+                    AssignCollectionResponse.newBuilder()
+                            .setSuccess(false)
+                            .setMessage(
+                                    "Unable to contact Smart Bin Service."
                             )
                             .build();
 
