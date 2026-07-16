@@ -8,6 +8,11 @@ import ie.nci.smartwaste.discovery.ServiceDiscovery;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import ie.nci.smartwaste.collection.CompleteCollectionRequest;
+import ie.nci.smartwaste.collection.CompleteCollectionResponse;
+import ie.nci.smartwaste.collection.CollectionStop;
+import ie.nci.smartwaste.collection.GetCollectionRouteRequest;
+import ie.nci.smartwaste.collection.GetCollectionRouteResponse;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +87,83 @@ public class CollectionClient {
         }
     }
 
+    public void completeCollection() {
+
+        CompleteCollectionRequest request =
+                CompleteCollectionRequest.newBuilder()
+                        .setCollectionId("COL-001")
+                        .setCollectedAmountLitres(180)
+                        .build();
+
+        try {
+
+            CompleteCollectionResponse response =
+                    blockingStub.completeCollection(request);
+
+            System.out.println();
+            System.out.println("=== Complete Collection ===");
+            System.out.println(
+                    "Success: " + response.getSuccess()
+            );
+            System.out.println(
+                    "Message: " + response.getMessage()
+            );
+
+        } catch (StatusRuntimeException exception) {
+
+            System.err.println(
+                    "Complete Collection RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
+        }
+    }
+
+    public void getCollectionRoute() {
+
+        GetCollectionRouteRequest request =
+                GetCollectionRouteRequest.newBuilder()
+                        .setVehicleId("TRUCK-001")
+                        .build();
+
+        try {
+
+            GetCollectionRouteResponse response =
+                    blockingStub.getCollectionRoute(request);
+
+            System.out.println();
+            System.out.println("=== Collection Route ===");
+            System.out.println(
+                    "Vehicle ID: " + response.getVehicleId()
+            );
+            System.out.println(
+                    "Number of stops: " + response.getStopsCount()
+            );
+
+            for (CollectionStop stop : response.getStopsList()) {
+                System.out.println();
+                System.out.println(
+                        "Collection ID: " + stop.getCollectionId()
+                );
+                System.out.println(
+                        "Bin ID: " + stop.getBinId()
+                );
+                System.out.println(
+                        "Scheduled date: " + stop.getScheduledDate()
+                );
+                System.out.println(
+                        "Completed: " + stop.getCompleted()
+                );
+            }
+
+        } catch (StatusRuntimeException exception) {
+
+            System.err.println(
+                    "Get Collection Route RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
+        }
+    }
+
     public void shutdown() throws InterruptedException {
 
         channel.shutdown()
@@ -92,10 +174,14 @@ public class CollectionClient {
 
         CollectionClient client = null;
 
+
         try {
 
             client = new CollectionClient();
+
             client.assignCollection();
+            client.completeCollection();
+            client.getCollectionRoute();
 
         } catch (IOException | InterruptedException exception) {
 
