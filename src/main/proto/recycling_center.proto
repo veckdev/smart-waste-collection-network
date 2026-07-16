@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package recycling;
+
+option java_multiple_files = true;
+option java_package = "ie.nci.smartwaste.recycling";
+option java_outer_classname = "RecyclingCenterProto";
+
+service RecyclingCenterService {
+
+  rpc ReceiveWaste(ReceiveWasteRequest)
+      returns (ReceiveWasteResponse);
+
+  rpc GetCenterCapacity(GetCenterCapacityRequest)
+      returns (GetCenterCapacityResponse);
+
+  rpc ProcessWaste(ProcessWasteRequest)
+      returns (ProcessWasteResponse);
+}
+
+message ReceiveWasteRequest {
+  string delivery_id = 1;
+  string collection_id = 2;
+  string waste_type = 3;
+  int32 amount_litres = 4;
+}
+
+message ReceiveWasteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetCenterCapacityRequest {
+  string center_id = 1;
+}
+
+message GetCenterCapacityResponse {
+  string center_id = 1;
+  int32 maximum_capacity_litres = 2;
+  int32 current_volume_litres = 3;
+  int32 available_capacity_litres = 4;
+}
+
+message ProcessWasteRequest {
+  string delivery_id = 1;
+  int32 processed_amount_litres = 2;
+}
+
+message ProcessWasteResponse {
+  bool success = 1;
+  string message = 2;
+}
