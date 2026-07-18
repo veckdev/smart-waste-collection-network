@@ -5,8 +5,10 @@ import ie.nci.smartwaste.discovery.ServiceDiscovery;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class RecyclingClient {
@@ -21,6 +23,9 @@ public class RecyclingClient {
 
     private final RecyclingCenterServiceGrpc
             .RecyclingCenterServiceBlockingStub blockingStub;
+
+    private final RecyclingCenterServiceGrpc
+            .RecyclingCenterServiceStub asyncStub;
 
     public RecyclingClient()
             throws IOException, InterruptedException {
@@ -45,6 +50,10 @@ public class RecyclingClient {
         blockingStub =
                 RecyclingCenterServiceGrpc
                         .newBlockingStub(channel);
+
+        asyncStub =
+                RecyclingCenterServiceGrpc
+                        .newStub(channel);
     }
 
     public boolean receiveWaste() {
@@ -147,6 +156,118 @@ public class RecyclingClient {
                 );
     }
 
+    public void uploadWasteDeliveries() throws InterruptedException {
+
+        CountDownLatch finishLatch = new CountDownLatch(1);
+
+        StreamObserver<WasteDeliverySummaryResponse> responseObserver =
+                new StreamObserver<>() {
+
+                    @Override
+                    public void onNext(
+                            WasteDeliverySummaryResponse response
+                    ) {
+
+                        System.out.println();
+                        System.out.println("==========================================");
+                        System.out.println("WASTE DELIVERY SUMMARY");
+                        System.out.println("==========================================");
+                        System.out.println(
+                                "Deliveries Processed : "
+                                        + response.getDeliveriesProcessed()
+                        );
+                        System.out.println(
+                                "Total Weight         : "
+                                        + response.getTotalWeightKg()
+                                        + " kg"
+                        );
+                        System.out.println(
+                                "Average Weight       : "
+                                        + response.getAverageWeightKg()
+                                        + " kg"
+                        );
+                        System.out.println(
+                                "Message              : "
+                                        + response.getMessage()
+                        );
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+
+                        System.err.println(
+                                "Client Streaming failed: "
+                                        + throwable.getMessage()
+                        );
+
+                        finishLatch.countDown();
+                    }
+
+                    @Override
+                    public void onCompleted() {
+
+                        System.out.println();
+                        System.out.println(
+                                "Server finished processing deliveries."
+                        );
+
+                        finishLatch.countDown();
+                    }
+                };
+
+        StreamObserver<WasteDeliveryRequest> requestObserver =
+                asyncStub.uploadWasteDeliveries(responseObserver);
+
+        requestObserver.onNext(
+                WasteDeliveryRequest.newBuilder()
+                        .setTruckId("TRUCK-001")
+                        .setWasteType("Plastic")
+                        .setWeightKg(420)
+                        .setOrigin("Temple Bar")
+                        .build()
+        );
+
+        requestObserver.onNext(
+                WasteDeliveryRequest.newBuilder()
+                        .setTruckId("TRUCK-002")
+                        .setWasteType("Glass")
+                        .setWeightKg(180)
+                        .setOrigin("Docklands")
+                        .build()
+        );
+
+        requestObserver.onNext(
+                WasteDeliveryRequest.newBuilder()
+                        .setTruckId("TRUCK-003")
+                        .setWasteType("Paper")
+                        .setWeightKg(350)
+                        .setOrigin("O'Connell Street")
+                        .build()
+        );
+
+        requestObserver.onNext(
+                WasteDeliveryRequest.newBuilder()
+                        .setTruckId("TRUCK-004")
+                        .setWasteType("Metal")
+                        .setWeightKg(610)
+                        .setOrigin("Smithfield")
+                        .build()
+        );
+
+        requestObserver.onNext(
+                WasteDeliveryRequest.newBuilder()
+                        .setTruckId("TRUCK-005")
+                        .setWasteType("Organic")
+                        .setWeightKg(280)
+                        .setOrigin("Parnell Square")
+                        .build()
+        );
+
+        requestObserver.onCompleted();
+
+        finishLatch.await(5, TimeUnit.SECONDS);
+    }
+
     public static void main(String[] args) {
 
         RecyclingClient client = null;
@@ -163,6 +284,13 @@ public class RecyclingClient {
                 client.getCenterCapacity();
                 client.processWaste();
 
+                System.out.println();
+                System.out.println(
+                        "=== Client Streaming Demo ==="
+                );
+
+                client.uploadWasteDeliveries();
+
             } else {
 
                 System.out.println();
@@ -173,9 +301,7 @@ public class RecyclingClient {
 
         } catch (IOException | InterruptedException exception) {
 
-            System.err.println(
-                    exception.getMessage()
-            );
+            System.err.println(exception.getMessage());
 
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -188,8 +314,13 @@ public class RecyclingClient {
                 try {
                     client.shutdown();
 
-                } catch (InterruptedException ignored) {
+                } catch (InterruptedException exception) {
+
                     Thread.currentThread().interrupt();
+
+                    System.err.println(
+                            "Client shutdown was interrupted."
+                    );
                 }
             }
         }

@@ -145,4 +145,64 @@ public class RecyclingServiceImpl
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+
+    @Override
+    public StreamObserver<WasteDeliveryRequest> uploadWasteDeliveries(
+            StreamObserver<WasteDeliverySummaryResponse> responseObserver
+    ) {
+
+        return new StreamObserver<>() {
+
+            private int deliveriesProcessed = 0;
+            private double totalWeight = 0.0;
+
+            @Override
+            public void onNext(WasteDeliveryRequest request) {
+
+                deliveriesProcessed++;
+                totalWeight += request.getWeightKg();
+
+                System.out.println();
+                System.out.println("Receiving Waste Delivery");
+                System.out.println("----------------------------------------");
+                System.out.println("Truck ID   : " + request.getTruckId());
+                System.out.println("Waste Type : " + request.getWasteType());
+                System.out.println("Weight     : " + request.getWeightKg() + " kg");
+                System.out.println("Origin     : " + request.getOrigin());
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+
+                System.err.println(
+                        "Client streaming cancelled: "
+                                + throwable.getMessage()
+                );
+            }
+
+            @Override
+            public void onCompleted() {
+
+                double averageWeight = 0.0;
+
+                if (deliveriesProcessed > 0) {
+                    averageWeight = totalWeight / deliveriesProcessed;
+                }
+
+                WasteDeliverySummaryResponse response =
+                        WasteDeliverySummaryResponse.newBuilder()
+                                .setDeliveriesProcessed(deliveriesProcessed)
+                                .setTotalWeightKg(totalWeight)
+                                .setAverageWeightKg(averageWeight)
+                                .setMessage("Waste deliveries processed successfully.")
+                                .build();
+
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+
+                System.out.println();
+                System.out.println("Waste delivery stream completed.");
+            }
+        };
+    }
 }

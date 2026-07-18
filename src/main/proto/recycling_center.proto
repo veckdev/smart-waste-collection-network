@@ -16,6 +16,10 @@ service RecyclingCenterService {
 
   rpc ProcessWaste(ProcessWasteRequest)
       returns (ProcessWasteResponse);
+
+  rpc UploadWasteDeliveries(stream WasteDeliveryRequest)
+      returns (WasteDeliverySummaryResponse);
+  
 }
 
 message ReceiveWasteRequest {
@@ -49,4 +53,18 @@ message ProcessWasteRequest {
 message ProcessWasteResponse {
   bool success = 1;
   string message = 2;
+}
+
+message WasteDeliveryRequest {
+  string truck_id = 1;
+  string waste_type = 2;
+  double weight_kg = 3;
+  string origin = 4;
+}
+
+message WasteDeliverySummaryResponse {
+  int32 deliveries_processed = 1;
+  double total_weight_kg = 2;
+  double average_weight_kg = 3;
+  string message = 4;
 }
