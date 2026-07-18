@@ -1,5 +1,6 @@
 package ie.nci.smartwaste.smartbin.model;
 
+
 public class SmartBin {
 
     private final String binId;

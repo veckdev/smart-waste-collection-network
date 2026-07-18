@@ -13,6 +13,7 @@ import ie.nci.smartwaste.smartbin.model.SmartBin;
 import ie.nci.smartwaste.smartbin.repository.SmartBinRepository;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import ie.nci.smartwaste.smartbin.BinsNeedingCollectionRequest;
 
 public class SmartBinServiceImpl
         extends SmartBinServiceGrpc.SmartBinServiceImplBase {
@@ -181,6 +182,40 @@ public class SmartBinServiceImpl
                         .build();
 
         responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void streamBinsNeedingCollection(
+            BinsNeedingCollectionRequest request,
+            StreamObserver<GetBinStatusResponse> responseObserver
+    ) {
+        int minimumFillLevel = request.getMinimumFillLevel();
+
+        for (SmartBin smartBin : repository.findAll()) {
+
+            if (smartBin.getFillLevelPercentage() >= minimumFillLevel) {
+
+                GetBinStatusResponse response =
+                        GetBinStatusResponse.newBuilder()
+                                .setBinId(smartBin.getBinId())
+                                .setLocation(smartBin.getLocation())
+                                .setWasteType(smartBin.getWasteType())
+                                .setCapacityLitres(
+                                        smartBin.getCapacityLitres()
+                                )
+                                .setFillLevelPercentage(
+                                        smartBin.getFillLevelPercentage()
+                                )
+                                .setDamaged(
+                                        smartBin.isDamaged()
+                                )
+                                .build();
+
+                responseObserver.onNext(response);
+            }
+        }
+
         responseObserver.onCompleted();
     }
 }

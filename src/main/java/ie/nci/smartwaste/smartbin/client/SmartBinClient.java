@@ -14,9 +14,11 @@ import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import ie.nci.smartwaste.smartbin.BinsNeedingCollectionRequest;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.Iterator;
 
 public class SmartBinClient {
 
@@ -177,6 +179,7 @@ public class SmartBinClient {
             client.updateFillLevel();
             client.reportDamage();
             client.getBinStatus();
+            client.streamBinsNeedingCollection();
 
         } catch (IOException | InterruptedException exception) {
             System.err.println(
@@ -200,6 +203,42 @@ public class SmartBinClient {
                     );
                 }
             }
+        }
+    }
+    public void streamBinsNeedingCollection() {
+
+        BinsNeedingCollectionRequest request =
+                BinsNeedingCollectionRequest.newBuilder()
+                        .setMinimumFillLevel(70)
+                        .build();
+
+        try {
+
+            Iterator<GetBinStatusResponse> responses =
+                    blockingStub.streamBinsNeedingCollection(request);
+
+            System.out.println();
+            System.out.println("=== Bins Needing Collection ===");
+
+            while (responses.hasNext()) {
+
+                GetBinStatusResponse response = responses.next();
+
+                System.out.println();
+                System.out.println("Bin ID: " + response.getBinId());
+                System.out.println("Location: " + response.getLocation());
+                System.out.println("Fill Level: "
+                        + response.getFillLevelPercentage() + "%");
+                System.out.println("Waste Type: "
+                        + response.getWasteType());
+            }
+
+        } catch (StatusRuntimeException exception) {
+
+            System.err.println(
+                    "Stream RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
         }
     }
 }

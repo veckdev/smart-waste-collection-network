@@ -43,4 +43,8 @@ public class SmartBinRepository {
         bin.setDamageDescription(damageDescription);
         return true;
     }
+
+    public Iterable<SmartBin> findAll() {
+        return bins.values();
+    }
 }
