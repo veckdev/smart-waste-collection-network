@@ -12,9 +12,13 @@ import ie.nci.smartwaste.smartbin.ReportDamageResponse;
 import ie.nci.smartwaste.smartbin.SmartBinServiceGrpc;
 import ie.nci.smartwaste.smartbin.UpdateFillLevelRequest;
 import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
+import ie.nci.smartwaste.smartbin.CollectionUpdate;
+import ie.nci.smartwaste.smartbin.CollectionFeedback;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,6 +26,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
 
 public class SmartBinClient {
 
@@ -33,6 +38,7 @@ public class SmartBinClient {
 
     private final ManagedChannel channel;
     private final SmartBinServiceGrpc.SmartBinServiceBlockingStub blockingStub;
+    private final SmartBinServiceGrpc.SmartBinServiceStub asyncStub;
 
     public SmartBinClient() throws IOException, InterruptedException {
 
@@ -53,8 +59,8 @@ public class SmartBinClient {
                 .usePlaintext()
                 .build();
 
-        blockingStub =
-                SmartBinServiceGrpc.newBlockingStub(channel);
+        blockingStub = SmartBinServiceGrpc.newBlockingStub(channel);
+        asyncStub = SmartBinServiceGrpc.newStub(channel);
     }
 
     private void registerBin(
@@ -344,6 +350,75 @@ public class SmartBinClient {
         }
     }
 
+    public void monitorCollectionRoute() {
+
+        CountDownLatch finishLatch = new CountDownLatch(1);
+
+        StreamObserver<CollectionFeedback> responseObserver =
+                new StreamObserver<CollectionFeedback>() {
+
+                    @Override
+                    public void onNext(CollectionFeedback response) {
+
+                        System.out.println("--------------------------------");
+                        System.out.println("Bin: " + response.getBinId());
+                        System.out.println("Instruction: " + response.getInstruction());
+                        System.out.println("Priority: " + response.getPriority());
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        t.printStackTrace();
+                        finishLatch.countDown();
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        System.out.println();
+                        System.out.println("Collection route completed.");
+                        finishLatch.countDown();
+                    }
+                };
+
+        StreamObserver<CollectionUpdate> requestObserver =
+                asyncStub.monitorCollectionRoute(responseObserver);
+
+        requestObserver.onNext(
+                CollectionUpdate.newBuilder()
+                        .setTruckId("TRUCK-001")
+                        .setBinId("BIN-001")
+                        .setFillLevelPercentage(75)
+                        .setCollected(true)
+                        .setDamaged(false)
+                        .build());
+
+        requestObserver.onNext(
+                CollectionUpdate.newBuilder()
+                        .setTruckId("TRUCK-001")
+                        .setBinId("BIN-003")
+                        .setFillLevelPercentage(92)
+                        .setCollected(true)
+                        .setDamaged(false)
+                        .build());
+
+        requestObserver.onNext(
+                CollectionUpdate.newBuilder()
+                        .setTruckId("TRUCK-001")
+                        .setBinId("BIN-005")
+                        .setFillLevelPercentage(81)
+                        .setCollected(true)
+                        .setDamaged(false)
+                        .build());
+
+        requestObserver.onCompleted();
+
+        try {
+            finishLatch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     public static void main(String[] args) {
 
         SmartBinClient client = null;
@@ -355,6 +430,10 @@ public class SmartBinClient {
             client.reportDamage();
             client.getBinStatus();
             client.streamBinsNeedingCollection();
+
+            System.out.println();
+            System.out.println("=== Bidirectional Streaming Demo ===");
+            client.monitorCollectionRoute();
 
         } catch (IOException | InterruptedException exception) {
             System.err.println(

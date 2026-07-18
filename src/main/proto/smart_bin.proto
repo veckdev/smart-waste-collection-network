@@ -22,6 +22,9 @@ service SmartBinService {
 
   rpc StreamBinsNeedingCollection(BinsNeedingCollectionRequest)
       returns (stream GetBinStatusResponse);
+
+  rpc MonitorCollectionRoute(stream CollectionUpdate)
+      returns (stream CollectionFeedback);
 }
 
 message RegisterBinRequest {
@@ -71,4 +74,18 @@ message ReportDamageResponse {
 
 message BinsNeedingCollectionRequest {
   int32 minimum_fill_level = 1;
+}
+
+message CollectionUpdate {
+  string truck_id = 1;
+  string bin_id = 2;
+  int32 fill_level_percentage = 3;
+  bool collected = 4;
+  bool damaged = 5;
+}
+
+message CollectionFeedback {
+  string bin_id = 1;
+  string instruction = 2;
+  string priority = 3;
 }

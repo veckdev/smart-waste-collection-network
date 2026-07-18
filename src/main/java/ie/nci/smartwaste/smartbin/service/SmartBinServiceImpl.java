@@ -14,6 +14,8 @@ import ie.nci.smartwaste.smartbin.repository.SmartBinRepository;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import ie.nci.smartwaste.smartbin.BinsNeedingCollectionRequest;
+import ie.nci.smartwaste.smartbin.CollectionUpdate;
+import ie.nci.smartwaste.smartbin.CollectionFeedback;
 
 public class SmartBinServiceImpl
         extends SmartBinServiceGrpc.SmartBinServiceImplBase {
@@ -217,5 +219,65 @@ public class SmartBinServiceImpl
         }
 
         responseObserver.onCompleted();
+    }
+
+    @Override
+    public StreamObserver<CollectionUpdate> monitorCollectionRoute(
+            StreamObserver<CollectionFeedback> responseObserver) {
+
+        return new StreamObserver<CollectionUpdate>() {
+
+            @Override
+            public void onNext(CollectionUpdate request) {
+
+                SmartBin smartBin = repository.findBinById(request.getBinId());
+
+                if (smartBin == null) {
+
+                    CollectionFeedback feedback =
+                            CollectionFeedback.newBuilder()
+                                    .setBinId(request.getBinId())
+                                    .setInstruction("Smart bin not found.")
+                                    .setPriority("HIGH")
+                                    .build();
+
+                    responseObserver.onNext(feedback);
+                    return;
+                }
+
+                String instruction;
+                String priority;
+
+                if (smartBin.isDamaged()) {
+                    instruction = "Maintenance required.";
+                    priority = "HIGH";
+                } else if (smartBin.getFillLevelPercentage() >= 80) {
+                    instruction = "Priority collection.";
+                    priority = "MEDIUM";
+                } else {
+                    instruction = "Collection confirmed.";
+                    priority = "LOW";
+                }
+
+                CollectionFeedback feedback =
+                        CollectionFeedback.newBuilder()
+                                .setBinId(smartBin.getBinId())
+                                .setInstruction(instruction)
+                                .setPriority(priority)
+                                .build();
+
+                responseObserver.onNext(feedback);
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                t.printStackTrace();
+            }
+
+            @Override
+            public void onCompleted() {
+                responseObserver.onCompleted();
+            }
+        };
     }
 }
