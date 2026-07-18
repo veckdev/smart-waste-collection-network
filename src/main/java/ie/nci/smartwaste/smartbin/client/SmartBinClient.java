@@ -2,6 +2,7 @@ package ie.nci.smartwaste.smartbin.client;
 
 import ie.nci.smartwaste.discovery.DiscoveredService;
 import ie.nci.smartwaste.discovery.ServiceDiscovery;
+import ie.nci.smartwaste.smartbin.BinsNeedingCollectionRequest;
 import ie.nci.smartwaste.smartbin.GetBinStatusRequest;
 import ie.nci.smartwaste.smartbin.GetBinStatusResponse;
 import ie.nci.smartwaste.smartbin.RegisterBinRequest;
@@ -14,11 +15,13 @@ import ie.nci.smartwaste.smartbin.UpdateFillLevelResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import ie.nci.smartwaste.smartbin.BinsNeedingCollectionRequest;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class SmartBinClient {
 
@@ -54,13 +57,18 @@ public class SmartBinClient {
                 SmartBinServiceGrpc.newBlockingStub(channel);
     }
 
-    public void registerBin() {
+    private void registerBin(
+            String binId,
+            String location,
+            String wasteType,
+            int capacityLitres
+    ) {
         RegisterBinRequest request =
                 RegisterBinRequest.newBuilder()
-                        .setBinId("BIN-001")
-                        .setLocation("O'Connell Street, Dublin")
-                        .setWasteType("General Waste")
-                        .setCapacityLitres(240)
+                        .setBinId(binId)
+                        .setLocation(location)
+                        .setWasteType(wasteType)
+                        .setCapacityLitres(capacityLitres)
                         .build();
 
         try {
@@ -68,23 +76,28 @@ public class SmartBinClient {
                     blockingStub.registerBin(request);
 
             System.out.println();
-            System.out.println("=== Register Bin ===");
+            System.out.println("=== Register Bin " + binId + " ===");
             System.out.println("Success: " + response.getSuccess());
             System.out.println("Message: " + response.getMessage());
 
         } catch (StatusRuntimeException exception) {
             System.err.println(
-                    "Register Bin RPC failed: "
+                    "Register Bin RPC failed for "
+                            + binId
+                            + ": "
                             + exception.getStatus().getDescription()
             );
         }
     }
 
-    public void updateFillLevel() {
+    private void updateFillLevel(
+            String binId,
+            int fillLevelPercentage
+    ) {
         UpdateFillLevelRequest request =
                 UpdateFillLevelRequest.newBuilder()
-                        .setBinId("BIN-001")
-                        .setFillLevelPercentage(75)
+                        .setBinId(binId)
+                        .setFillLevelPercentage(fillLevelPercentage)
                         .build();
 
         try {
@@ -92,13 +105,17 @@ public class SmartBinClient {
                     blockingStub.updateFillLevel(request);
 
             System.out.println();
-            System.out.println("=== Update Fill Level ===");
+            System.out.println(
+                    "=== Update Fill Level " + binId + " ==="
+            );
             System.out.println("Success: " + response.getSuccess());
             System.out.println("Message: " + response.getMessage());
 
         } catch (StatusRuntimeException exception) {
             System.err.println(
-                    "Update Fill Level RPC failed: "
+                    "Update Fill Level RPC failed for "
+                            + binId
+                            + ": "
                             + exception.getStatus().getDescription()
             );
         }
@@ -163,9 +180,168 @@ public class SmartBinClient {
         }
     }
 
+    public void prepareStreamingDemo() {
+        registerBin(
+                "BIN-001",
+                "O'Connell Street, Dublin",
+                "General Waste",
+                240
+        );
+
+        registerBin(
+                "BIN-002",
+                "Grafton Street, Dublin",
+                "Recycling",
+                240
+        );
+
+        registerBin(
+                "BIN-003",
+                "Temple Bar, Dublin",
+                "General Waste",
+                360
+        );
+
+        registerBin(
+                "BIN-004",
+                "Parnell Square, Dublin",
+                "Organic Waste",
+                240
+        );
+
+        registerBin(
+                "BIN-005",
+                "Docklands, Dublin",
+                "Recycling",
+                360
+        );
+
+        updateFillLevel("BIN-001", 75);
+        updateFillLevel("BIN-002", 40);
+        updateFillLevel("BIN-003", 92);
+        updateFillLevel("BIN-004", 65);
+        updateFillLevel("BIN-005", 81);
+    }
+
     public void shutdown() throws InterruptedException {
         channel.shutdown()
                 .awaitTermination(5, TimeUnit.SECONDS);
+    }
+
+    public void streamBinsNeedingCollection() {
+
+        BinsNeedingCollectionRequest request =
+                BinsNeedingCollectionRequest.newBuilder()
+                        .setMinimumFillLevel(70)
+                        .build();
+
+        try {
+
+            Iterator<GetBinStatusResponse> responses =
+                    blockingStub.streamBinsNeedingCollection(request);
+
+            List<GetBinStatusResponse> damagedBins = new ArrayList<>();
+            List<GetBinStatusResponse> collectionBins = new ArrayList<>();
+
+            while (responses.hasNext()) {
+
+                GetBinStatusResponse response = responses.next();
+
+                if (response.getDamaged()) {
+                    damagedBins.add(response);
+                }
+
+                collectionBins.add(response);
+            }
+
+            damagedBins.sort(
+                    Comparator.comparingInt(
+                            GetBinStatusResponse::getFillLevelPercentage
+                    ).reversed()
+            );
+
+            collectionBins.sort(
+                    Comparator.comparingInt(
+                            GetBinStatusResponse::getFillLevelPercentage
+                    ).reversed()
+            );
+
+            System.out.println();
+            System.out.println("==================================================");
+            System.out.println("SMART WASTE OPERATIONAL REPORT");
+            System.out.println("==================================================");
+
+            System.out.println();
+            System.out.println("CRITICAL MAINTENANCE");
+            System.out.println("--------------------------------------------------");
+
+            if (damagedBins.isEmpty()) {
+
+                System.out.println("No damaged bins.");
+
+            } else {
+
+                for (GetBinStatusResponse bin : damagedBins) {
+
+                    System.out.println();
+                    System.out.println("Bin ID        : " + bin.getBinId());
+                    System.out.println("Location      : " + bin.getLocation());
+                    System.out.println("Fill Level    : "
+                            + bin.getFillLevelPercentage() + "%");
+                    System.out.println("Status        : DAMAGED");
+                    System.out.println("--------------------------------------------------");
+                }
+            }
+
+            System.out.println();
+            System.out.println("==================================================");
+
+            System.out.println();
+            System.out.println("COLLECTION PRIORITY");
+            System.out.println("--------------------------------------------------");
+
+            if (collectionBins.isEmpty()) {
+
+                System.out.println("No bins require collection.");
+
+            } else {
+
+                int priority = 1;
+
+                for (GetBinStatusResponse bin : collectionBins) {
+
+                    System.out.println();
+                    System.out.println("Priority #" + priority++);
+                    System.out.println("--------------------------------------------------");
+                    System.out.println("Bin ID        : " + bin.getBinId());
+                    System.out.println("Location      : " + bin.getLocation());
+                    System.out.println("Fill Level    : "
+                            + bin.getFillLevelPercentage() + "%");
+                    System.out.println("Waste Type    : " + bin.getWasteType());
+                }
+            }
+
+            System.out.println();
+            System.out.println("==================================================");
+
+            System.out.println();
+            System.out.println("SUMMARY");
+            System.out.println();
+            System.out.println("Damaged Bins          : "
+                    + damagedBins.size());
+            System.out.println("Bins Requiring Pickup : "
+                    + collectionBins.size());
+
+            System.out.println();
+            System.out.println("==================================================");
+
+        } catch (StatusRuntimeException exception) {
+
+            System.err.println(
+                    "Stream RPC failed: "
+                            + exception.getStatus().getDescription()
+            );
+        }
     }
 
     public static void main(String[] args) {
@@ -175,8 +351,7 @@ public class SmartBinClient {
         try {
             client = new SmartBinClient();
 
-            client.registerBin();
-            client.updateFillLevel();
+            client.prepareStreamingDemo();
             client.reportDamage();
             client.getBinStatus();
             client.streamBinsNeedingCollection();
@@ -203,42 +378,6 @@ public class SmartBinClient {
                     );
                 }
             }
-        }
-    }
-    public void streamBinsNeedingCollection() {
-
-        BinsNeedingCollectionRequest request =
-                BinsNeedingCollectionRequest.newBuilder()
-                        .setMinimumFillLevel(70)
-                        .build();
-
-        try {
-
-            Iterator<GetBinStatusResponse> responses =
-                    blockingStub.streamBinsNeedingCollection(request);
-
-            System.out.println();
-            System.out.println("=== Bins Needing Collection ===");
-
-            while (responses.hasNext()) {
-
-                GetBinStatusResponse response = responses.next();
-
-                System.out.println();
-                System.out.println("Bin ID: " + response.getBinId());
-                System.out.println("Location: " + response.getLocation());
-                System.out.println("Fill Level: "
-                        + response.getFillLevelPercentage() + "%");
-                System.out.println("Waste Type: "
-                        + response.getWasteType());
-            }
-
-        } catch (StatusRuntimeException exception) {
-
-            System.err.println(
-                    "Stream RPC failed: "
-                            + exception.getStatus().getDescription()
-            );
         }
     }
 }
