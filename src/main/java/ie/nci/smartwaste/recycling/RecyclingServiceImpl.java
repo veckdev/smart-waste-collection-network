@@ -20,18 +20,21 @@ public class RecyclingServiceImpl
         if (deliveryId.isEmpty()) {
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
-                            .withDescription("Delivery ID cannot be empty.")
+                            .withDescription(
+                                    "Delivery ID cannot be empty."
+                            )
                             .asRuntimeException()
             );
             return;
         }
 
         if (repository.existsById(deliveryId)) {
-
             responseObserver.onNext(
                     ReceiveWasteResponse.newBuilder()
                             .setSuccess(false)
-                            .setMessage("A delivery with this ID already exists.")
+                            .setMessage(
+                                    "A delivery with this ID already exists."
+                            )
                             .build()
             );
 
@@ -48,10 +51,41 @@ public class RecyclingServiceImpl
 
         repository.save(delivery);
 
+        System.out.println();
+        System.out.println("=== Waste Delivery Received ===");
+        System.out.println(
+                "Delivery ID: " + delivery.getDeliveryId()
+        );
+        System.out.println(
+                "Collection ID: " + delivery.getCollectionId()
+        );
+        System.out.println(
+                "Waste type: " + delivery.getWasteType()
+        );
+        System.out.println(
+                "Amount: "
+                        + delivery.getAmountLitres()
+                        + " litres"
+        );
+        System.out.println(
+                "Current center volume: "
+                        + repository.getCurrentVolumeLitres()
+                        + " litres"
+        );
+        System.out.println(
+                "Available capacity: "
+                        + repository.getAvailableCapacityLitres()
+                        + " litres"
+        );
+        System.out.println("===============================");
+        System.out.println();
+
         responseObserver.onNext(
                 ReceiveWasteResponse.newBuilder()
                         .setSuccess(true)
-                        .setMessage("Waste received successfully.")
+                        .setMessage(
+                                "Waste received successfully."
+                        )
                         .build()
         );
 
@@ -66,13 +100,21 @@ public class RecyclingServiceImpl
 
         GetCenterCapacityResponse response =
                 GetCenterCapacityResponse.newBuilder()
-                        .setCenterId(repository.getCenterId())
+                        .setCenterId(
+                                repository.getCenterId()
+                        )
                         .setMaximumCapacityLitres(
-                                repository.getMaximumCapacityLitres())
+                                repository
+                                        .getMaximumCapacityLitres()
+                        )
                         .setCurrentVolumeLitres(
-                                repository.getCurrentVolumeLitres())
+                                repository
+                                        .getCurrentVolumeLitres()
+                        )
                         .setAvailableCapacityLitres(
-                                repository.getAvailableCapacityLitres())
+                                repository
+                                        .getAvailableCapacityLitres()
+                        )
                         .build();
 
         responseObserver.onNext(response);

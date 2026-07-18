@@ -8,12 +8,12 @@ import ie.nci.smartwaste.collection.CompleteCollectionRequest;
 import ie.nci.smartwaste.collection.CompleteCollectionResponse;
 import ie.nci.smartwaste.collection.GetCollectionRouteRequest;
 import ie.nci.smartwaste.collection.GetCollectionRouteResponse;
+import ie.nci.smartwaste.collection.integration.RecyclingServiceClient;
+import ie.nci.smartwaste.collection.integration.SmartBinServiceClient;
 import ie.nci.smartwaste.collection.model.CollectionTask;
 import ie.nci.smartwaste.collection.repository.CollectionRepository;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import ie.nci.smartwaste.collection.integration.SmartBinServiceClient;
-
 
 import java.util.List;
 
@@ -28,6 +28,7 @@ public class CollectionServiceImpl
             AssignCollectionRequest request,
             StreamObserver<AssignCollectionResponse> responseObserver
     ) {
+
         String collectionId = request.getCollectionId().trim();
 
         if (collectionId.isEmpty()) {
@@ -42,6 +43,7 @@ public class CollectionServiceImpl
         }
 
         if (repository.existsById(collectionId)) {
+
             AssignCollectionResponse response =
                     AssignCollectionResponse.newBuilder()
                             .setSuccess(false)
@@ -56,6 +58,7 @@ public class CollectionServiceImpl
         }
 
         try {
+
             SmartBinServiceClient smartBinClient =
                     new SmartBinServiceClient();
 
@@ -63,6 +66,7 @@ public class CollectionServiceImpl
                     smartBinClient.binExists(request.getBinId());
 
             if (!binExists) {
+
                 AssignCollectionResponse response =
                         AssignCollectionResponse.newBuilder()
                                 .setSuccess(false)
@@ -75,6 +79,7 @@ public class CollectionServiceImpl
             }
 
         } catch (Exception exception) {
+
             AssignCollectionResponse response =
                     AssignCollectionResponse.newBuilder()
                             .setSuccess(false)
@@ -114,10 +119,12 @@ public class CollectionServiceImpl
             CompleteCollectionRequest request,
             StreamObserver<CompleteCollectionResponse> responseObserver
     ) {
+
         int collectedAmountLitres =
                 request.getCollectedAmountLitres();
 
         if (collectedAmountLitres < 0) {
+
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
                             .withDescription(
@@ -128,15 +135,56 @@ public class CollectionServiceImpl
             return;
         }
 
-        boolean completed = repository.completeCollection(
-                request.getCollectionId(),
-                collectedAmountLitres
-        );
+        boolean completed =
+                repository.completeCollection(
+                        request.getCollectionId(),
+                        collectedAmountLitres
+                );
 
         if (!completed) {
+
             responseObserver.onError(
                     Status.NOT_FOUND
-                            .withDescription("Collection not found.")
+                            .withDescription(
+                                    "Collection not found."
+                            )
+                            .asRuntimeException()
+            );
+            return;
+        }
+
+        try {
+
+            RecyclingServiceClient recyclingClient =
+                    new RecyclingServiceClient();
+
+            boolean delivered =
+                    recyclingClient.sendWaste(
+                            "DEL-" + request.getCollectionId(),
+                            request.getCollectionId(),
+                            "General Waste",
+                            collectedAmountLitres
+                    );
+
+            if (!delivered) {
+
+                responseObserver.onError(
+                        Status.UNAVAILABLE
+                                .withDescription(
+                                        "Failed to deliver waste to Recycling Service."
+                                )
+                                .asRuntimeException()
+                );
+                return;
+            }
+
+        } catch (Exception exception) {
+
+            responseObserver.onError(
+                    Status.UNAVAILABLE
+                            .withDescription(
+                                    "Recycling Service unavailable."
+                            )
                             .asRuntimeException()
             );
             return;
@@ -159,9 +207,11 @@ public class CollectionServiceImpl
             GetCollectionRouteRequest request,
             StreamObserver<GetCollectionRouteResponse> responseObserver
     ) {
+
         String vehicleId = request.getVehicleId().trim();
 
         if (vehicleId.isEmpty()) {
+
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
                             .withDescription(
@@ -180,6 +230,7 @@ public class CollectionServiceImpl
                         .setVehicleId(vehicleId);
 
         for (CollectionTask task : tasks) {
+
             CollectionStop stop =
                     CollectionStop.newBuilder()
                             .setCollectionId(
