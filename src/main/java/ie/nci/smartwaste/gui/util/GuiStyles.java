@@ -158,4 +158,49 @@ public final class GuiStyles {
 
         return button;
     }
+
+    public static JTextField createTextField() {
+        JTextField field = new JTextField();
+        field.setFont(BODY_FONT);
+        field.setForeground(TEXT_PRIMARY);
+        field.setBackground(SURFACE_SECONDARY);
+        field.setCaretColor(PRIMARY_DARK);
+        field.setPreferredSize(new Dimension(220, 36));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+        return field;
+    }
+
+    public static JTextArea createTextArea(int rows) {
+        JTextArea area = new JTextArea(rows, 20);
+        area.setFont(BODY_FONT);
+        area.setForeground(TEXT_PRIMARY);
+        area.setBackground(SURFACE_SECONDARY);
+        area.setCaretColor(PRIMARY_DARK);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        return area;
+    }
+
+    public static void styleTable(JTable table) {
+        table.setFont(BODY_FONT);
+        table.setForeground(TEXT_PRIMARY);
+        table.setBackground(SURFACE);
+        table.setSelectionBackground(PRIMARY_LIGHT);
+        table.setSelectionForeground(TEXT_PRIMARY);
+        table.setRowHeight(38);
+        table.setShowVerticalLines(false);
+        table.setGridColor(BORDER_LIGHT);
+        table.setIntercellSpacing(new Dimension(0, 1));
+        table.setFillsViewportHeight(true);
+
+        table.getTableHeader().setFont(LABEL_FONT);
+        table.getTableHeader().setForeground(TEXT_SECONDARY);
+        table.getTableHeader().setBackground(SURFACE_SECONDARY);
+        table.getTableHeader().setPreferredSize(new Dimension(1, 36));
+        table.getTableHeader().setReorderingAllowed(false);
+    }
 }
