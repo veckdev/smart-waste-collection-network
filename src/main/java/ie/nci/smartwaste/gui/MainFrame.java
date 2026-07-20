@@ -2,6 +2,7 @@ package ie.nci.smartwaste.gui;
 
 import ie.nci.smartwaste.gui.component.ActivityLogPanel;
 import ie.nci.smartwaste.gui.component.ServiceStatusPanel;
+import ie.nci.smartwaste.gui.component.StatusBadge;
 import ie.nci.smartwaste.gui.panel.CollectionPanel;
 import ie.nci.smartwaste.gui.panel.DashboardPanel;
 import ie.nci.smartwaste.gui.panel.LiveOperationsPanel;
@@ -19,6 +20,7 @@ public class MainFrame extends JFrame {
     private final DashboardPanel dashboardPanel;
     private final SmartBinPanel smartBinPanel;
     private final CollectionPanel collectionPanel;
+    private final LiveOperationsPanel liveOperationsPanel;
 
     private final ServiceStatusPanel smartBinStatus;
     private final ServiceStatusPanel collectionStatus;
@@ -31,6 +33,7 @@ public class MainFrame extends JFrame {
         dashboardPanel = new DashboardPanel();
         smartBinPanel = new SmartBinPanel();
         collectionPanel = new CollectionPanel();
+        liveOperationsPanel = new LiveOperationsPanel();
 
         smartBinStatus = new ServiceStatusPanel("Smart Bins");
         collectionStatus = new ServiceStatusPanel("Collections");
@@ -146,7 +149,7 @@ public class MainFrame extends JFrame {
         tabbedPane.addTab("Smart Bins", smartBinPanel);
         tabbedPane.addTab("Collections", collectionPanel);
         tabbedPane.addTab("Recycling", new RecyclingPanel());
-        tabbedPane.addTab("Live Network", new LiveOperationsPanel());
+        tabbedPane.addTab("Live Network", liveOperationsPanel);
 
         tabbedPane.addChangeListener(event -> {
             int selectedIndex = tabbedPane.getSelectedIndex();
@@ -193,16 +196,25 @@ public class MainFrame extends JFrame {
         smartBinStatus.setConnected(connected);
         dashboardPanel.setSmartBinConnected(connected);
         smartBinPanel.setNetworkConnected(connected);
+        liveOperationsPanel.setSmartBinHealth(
+                connected ? StatusBadge.State.CONNECTED : StatusBadge.State.OFFLINE
+        );
     }
 
     public void setCollectionConnected(boolean connected) {
         collectionStatus.setConnected(connected);
         dashboardPanel.setCollectionConnected(connected);
         collectionPanel.setNetworkConnected(connected);
+        liveOperationsPanel.setCollectionHealth(
+                connected ? StatusBadge.State.CONNECTED : StatusBadge.State.OFFLINE
+        );
     }
 
     public void setRecyclingConnected(boolean connected) {
         recyclingStatus.setConnected(connected);
         dashboardPanel.setRecyclingConnected(connected);
+        liveOperationsPanel.setRecyclingHealth(
+                connected ? StatusBadge.State.CONNECTED : StatusBadge.State.OFFLINE
+        );
     }
 }
