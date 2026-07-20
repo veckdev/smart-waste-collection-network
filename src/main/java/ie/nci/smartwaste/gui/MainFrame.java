@@ -18,6 +18,7 @@ public class MainFrame extends JFrame {
     private final ActivityLogPanel activityLogPanel;
     private final DashboardPanel dashboardPanel;
     private final SmartBinPanel smartBinPanel;
+    private final CollectionPanel collectionPanel;
 
     private final ServiceStatusPanel smartBinStatus;
     private final ServiceStatusPanel collectionStatus;
@@ -29,6 +30,7 @@ public class MainFrame extends JFrame {
         activityLogPanel = new ActivityLogPanel();
         dashboardPanel = new DashboardPanel();
         smartBinPanel = new SmartBinPanel();
+        collectionPanel = new CollectionPanel();
 
         smartBinStatus = new ServiceStatusPanel("Smart Bins");
         collectionStatus = new ServiceStatusPanel("Collections");
@@ -142,7 +144,7 @@ public class MainFrame extends JFrame {
 
         tabbedPane.addTab("Control Centre", dashboardPanel);
         tabbedPane.addTab("Smart Bins", smartBinPanel);
-        tabbedPane.addTab("Collections", new CollectionPanel());
+        tabbedPane.addTab("Collections", collectionPanel);
         tabbedPane.addTab("Recycling", new RecyclingPanel());
         tabbedPane.addTab("Live Network", new LiveOperationsPanel());
 
@@ -196,6 +198,7 @@ public class MainFrame extends JFrame {
     public void setCollectionConnected(boolean connected) {
         collectionStatus.setConnected(connected);
         dashboardPanel.setCollectionConnected(connected);
+        collectionPanel.setNetworkConnected(connected);
     }
 
     public void setRecyclingConnected(boolean connected) {
