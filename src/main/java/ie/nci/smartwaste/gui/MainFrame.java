@@ -20,6 +20,7 @@ public class MainFrame extends JFrame {
     private final DashboardPanel dashboardPanel;
     private final SmartBinPanel smartBinPanel;
     private final CollectionPanel collectionPanel;
+    private final RecyclingPanel recyclingPanel;
     private final LiveOperationsPanel liveOperationsPanel;
 
     private final ServiceStatusPanel smartBinStatus;
@@ -33,7 +34,9 @@ public class MainFrame extends JFrame {
         dashboardPanel = new DashboardPanel();
         smartBinPanel = new SmartBinPanel();
         collectionPanel = new CollectionPanel();
+        recyclingPanel = new RecyclingPanel();
         liveOperationsPanel = new LiveOperationsPanel();
+        recyclingPanel.setActivityLogger(activityLogPanel::log);
 
         smartBinStatus = new ServiceStatusPanel("Smart Bins");
         collectionStatus = new ServiceStatusPanel("Collections");
@@ -148,7 +151,7 @@ public class MainFrame extends JFrame {
         tabbedPane.addTab("Control Centre", dashboardPanel);
         tabbedPane.addTab("Smart Bins", smartBinPanel);
         tabbedPane.addTab("Collections", collectionPanel);
-        tabbedPane.addTab("Recycling", new RecyclingPanel());
+        tabbedPane.addTab("Recycling", recyclingPanel);
         tabbedPane.addTab("Live Network", liveOperationsPanel);
 
         tabbedPane.addChangeListener(event -> {
@@ -213,6 +216,7 @@ public class MainFrame extends JFrame {
     public void setRecyclingConnected(boolean connected) {
         recyclingStatus.setConnected(connected);
         dashboardPanel.setRecyclingConnected(connected);
+        recyclingPanel.setNetworkConnected(connected);
         liveOperationsPanel.setRecyclingHealth(
                 connected ? StatusBadge.State.CONNECTED : StatusBadge.State.OFFLINE
         );

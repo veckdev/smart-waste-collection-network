@@ -28,37 +28,51 @@ public class StatusBadge extends JLabel {
     }
 
     public void setState(State state) {
+        setState(state, defaultLabel(state));
+    }
+
+    public void setState(State state, String label) {
         this.state = state;
 
         switch (state) {
             case CONNECTED -> configure(
-                    "CONNECTED",
+                    label,
                     GuiStyles.PRIMARY_DARK,
                     GuiStyles.SUCCESS_BACKGROUND
             );
             case WARNING -> configure(
-                    "WARNING",
+                    label,
                     GuiStyles.WARNING,
                     new Color(250, 235, 209)
             );
             case DISCONNECTED -> configure(
-                    "DISCONNECTED",
+                    label,
                     GuiStyles.ERROR,
                     new Color(249, 224, 222)
             );
             case STANDBY -> configure(
-                    "STANDBY",
+                    label,
                     GuiStyles.TEXT_SECONDARY,
                     GuiStyles.SAGE
             );
             case OFFLINE -> configure(
-                    "OFFLINE",
+                    label,
                     GuiStyles.OFFLINE,
                     GuiStyles.OFFLINE_BACKGROUND
             );
         }
 
         repaint();
+    }
+
+    private String defaultLabel(State state) {
+        return switch (state) {
+            case CONNECTED -> "CONNECTED";
+            case OFFLINE -> "OFFLINE";
+            case WARNING -> "WARNING";
+            case DISCONNECTED -> "DISCONNECTED";
+            case STANDBY -> "STANDBY";
+        };
     }
 
     public State getState() {

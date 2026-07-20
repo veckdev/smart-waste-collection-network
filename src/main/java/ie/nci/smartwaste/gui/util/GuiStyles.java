@@ -185,6 +185,17 @@ public final class GuiStyles {
         return area;
     }
 
+    public static JComboBox<String> createComboBox(String... options) {
+        JComboBox<String> comboBox = new JComboBox<>(options);
+        comboBox.setFont(BODY_FONT);
+        comboBox.setForeground(TEXT_PRIMARY);
+        comboBox.setBackground(SURFACE_SECONDARY);
+        comboBox.setPreferredSize(new Dimension(220, 36));
+        comboBox.setBorder(BorderFactory.createLineBorder(BORDER));
+        comboBox.setFocusable(false);
+        return comboBox;
+    }
+
     public static void styleTable(JTable table) {
         table.setFont(BODY_FONT);
         table.setForeground(TEXT_PRIMARY);
